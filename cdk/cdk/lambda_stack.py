@@ -32,7 +32,7 @@ class LambdaStack(Stack):
                 "OPENAI_API_KEY": openai_key_param.string_value,
                 "ASSISTANT_ID": assistant_id_param.string_value,
             },
-            timeout=Duration.seconds(10)
+            timeout=Duration.seconds(15)
         )
         
         base_api = apigateway.RestApi(self, 'ApiGatewayWithCors',
