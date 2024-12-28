@@ -24,8 +24,7 @@ def wait_on_run(run, thread):
 
 def lambda_handler(event, context):
     try:
-        body = json.loads(event["body"])
-        request = ChatRequest(**body)
+        request = ChatRequest(**event)
 
         thread = None
         if request.thread_id:
