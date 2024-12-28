@@ -44,9 +44,45 @@ class LambdaStack(Stack):
         chat_resource = api.root.add_resource("chat")
         chat_resource.add_method("POST")
 
+        def add_cors_options(api_resource: apigateway.IResource):
+            api_resource.add_method(
+                'OPTIONS',
+                apigateway.MockIntegration(
+                    integration_responses=[
+                        apigateway.IntegrationResponse(
+                            status_code='200',
+                            response_parameters={
+                                'method.response.header.Access-Control-Allow-Headers': "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent'",
+                                'method.response.header.Access-Control-Allow-Origin': "'*'",
+                                'method.response.header.Access-Control-Allow-Credentials': "'false'",
+                                'method.response.header.Access-Control-Allow-Methods': "'OPTIONS,GET,PUT,POST,DELETE'",
+                            }
+                        )
+                    ],
+                    passthrough_behavior=apigateway.PassthroughBehavior.NEVER,
+                    request_templates={
+                        "application/json": "{\"statusCode\": 200}"
+                    },
+                ),
+                method_responses=[
+                    apigateway.MethodResponse(
+                        status_code='200',
+                        response_parameters={
+                            'method.response.header.Access-Control-Allow-Headers': True,
+                            'method.response.header.Access-Control-Allow-Methods': True,
+                            'method.response.header.Access-Control-Allow-Credentials': True,
+                            'method.response.header.Access-Control-Allow-Origin': True,
+                        }
+                    )
+                ]
+            )
+            add_cors_options(chat_resource)
+
         CfnOutput(
             self,
             "ChatAPIUrl",
             value=api.url,
             description="The base URL for the Chat API",
         )
+
+        
