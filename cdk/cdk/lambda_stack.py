@@ -35,53 +35,52 @@ class LambdaStack(Stack):
             timeout=Duration.seconds(10)
         )
         
-        api = apigateway.LambdaRestApi(
-            self,
-            "ChatAPI",
-            handler = lambda_function,
-            proxy = False,
-        )
-        chat_resource = api.root.add_resource("chat")
-        chat_resource.add_method("POST")
+        base_api = apigateway.RestApi(self, 'ApiGatewayWithCors',
+                                  rest_api_name='ApiGatewayWithCors')
 
-        def add_cors_options(api_resource: apigateway.IResource):
-            api_resource.add_method(
-                'OPTIONS',
-                apigateway.MockIntegration(
-                    integration_responses=[
-                        apigateway.IntegrationResponse(
-                            status_code='200',
-                            response_parameters={
-                                'method.response.header.Access-Control-Allow-Headers': "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token,X-Amz-User-Agent'",
-                                'method.response.header.Access-Control-Allow-Origin': "'*'",
-                                'method.response.header.Access-Control-Allow-Credentials': "'false'",
-                                'method.response.header.Access-Control-Allow-Methods': "'OPTIONS,GET,PUT,POST,DELETE'",
-                            }
-                        )
-                    ],
-                    passthrough_behavior=apigateway.PassthroughBehavior.NEVER,
-                    request_templates={
-                        "application/json": "{\"statusCode\": 200}"
-                    },
-                ),
-                method_responses=[
-                    apigateway.MethodResponse(
-                        status_code='200',
-                        response_parameters={
-                            'method.response.header.Access-Control-Allow-Headers': True,
-                            'method.response.header.Access-Control-Allow-Methods': True,
-                            'method.response.header.Access-Control-Allow-Credentials': True,
-                            'method.response.header.Access-Control-Allow-Origin': True,
-                        }
-                    )
-                ]
-            )
-            add_cors_options(chat_resource)
+        usage_plan = base_api.add_usage_plan(
+            "ChatApiUsagePlan",
+            name="ChatAPIUsagePlan",
+            throttle=apigateway.ThrottleSettings(
+                rate_limit=2,
+                burst_limit=5,
+            ),
+        )
+
+        chat_resource = base_api.root.add_resource(
+            'chat',
+            default_cors_preflight_options=apigateway.CorsOptions(
+                allow_methods=['POST', 'OPTIONS'],
+                allow_origins=apigateway.Cors.ALL_ORIGINS)
+        )
+        lambda_integration = apigateway.LambdaIntegration(
+            lambda_function,
+            proxy=False,
+            integration_responses=[
+                apigateway.IntegrationResponse(
+                    status_code="200",
+                    response_parameters={
+                        'method.response.header.Access-Control-Allow-Origin': "'*'"
+                    }
+                )
+            ]
+        )
+        chat_resource.add_method(
+            'POST', lambda_integration,
+            method_responses=[
+                apigateway.MethodResponse(
+                    status_code="200",
+                    response_parameters={
+                        'method.response.header.Access-Control-Allow-Origin': True
+                    }
+                )
+            ]
+        )
 
         CfnOutput(
             self,
             "ChatAPIUrl",
-            value=api.url,
+            value=base_api.url,
             description="The base URL for the Chat API",
         )
 
